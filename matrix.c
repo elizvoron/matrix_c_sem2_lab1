@@ -1,239 +1,117 @@
 #include "matrix.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 
-//Обработка/работа с матрицами
-int freeMatrix(Matrix* matrix) {
-    if (matrix == NULL) {
-        return 0;
-    }
-    if (matrix->data != NULL) {
-        for (int i = 0; i < matrix->string; i++) {
-            if (matrix->data[i] != NULL) {
-                for (int j = 0; j < matrix->elem; j++) {
-                    if (matrix->data[i][j] != NULL) {
-                        if (matrix->data[i][j]->data != NULL) {
-                            free(matrix->data[i][j]->data);
-                        }
-                        free(matrix->data[i][j]);
-                    }
-                }
-                free(matrix->data[i]);
-            }
+Matrix* matrix_create(int rows, int cols, const type_info* ti) {
+    Matrix* m = malloc(sizeof(Matrix));
+    m->rows = rows;
+    m->cols = cols;
+    m->ti = ti;
+    m->data = malloc(rows * sizeof(void**));
+    for (int i = 0; i < rows; i++) {
+        m->data[i] = malloc(cols * sizeof(void*));
+        for (int j = 0; j < cols; j++) {
+            m->data[i][j] = ti->zero();
         }
-        free(matrix->data);
     }
-    free(matrix);
-    return 0;
+    return m;
 }
 
-Matrix* makeMatrix(int string, int elem, const char* type, operations* ops) {
-    Matrix* matrix = (Matrix*)malloc(sizeof(Matrix));
-    if (matrix == NULL) {
-        return NULL;
-    }
-    matrix->string = string;
-    matrix->elem = elem;
-    strcpy(matrix->type, type);
-
-    matrix->data = (data_type***)malloc((size_t)(matrix->string) * sizeof(data_type**));
-    if (matrix->data == NULL) {
-        free(matrix);
-        return NULL;
-    }
-
-    for (int i = 0; i < matrix->string; i++) {
-        matrix->data[i] = (data_type**)malloc((size_t)(matrix->elem) * sizeof(data_type*));
-        if (matrix->data[i] == NULL) {
-            freeMatrix(matrix);
-            return NULL;
+void matrix_free(Matrix* m) {
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            m->ti->free_element(m->data[i][j]);
         }
-        for (int j = 0; j < matrix->elem; j++) {
-            matrix->data[i][j] = (data_type*)malloc(sizeof(data_type));
-            if (matrix->data[i][j] == NULL) {
-                freeMatrix(matrix);
-                return NULL;
-            }
-            ops->memory(matrix->data[i][j]);
-        }
+        free(m->data[i]);
     }
-    return matrix;
+    free(m->data);
+    free(m);
 }
 
-Matrix* readMatrix(FILE* prog_fail, operations* ops) {
-    int string, elem;
-    char type[10];
-    if ((fscanf(prog_fail, "%s %d %d", type, &string, &elem)) != 3) {
-        return NULL;
-    }
-    Matrix* matrix = makeMatrix(string, elem, type, ops);
-    if (matrix == NULL) {
-        return NULL;
-    }
-    for (int i = 0; i < (matrix->string); i++) {
-        for (int j = 0; j < (matrix->elem); j++) {
-            if (ops->read(prog_fail, matrix->data[i][j]) == NULL) {
-                freeMatrix(matrix);
-                return NULL;
-            }
+Matrix* matrix_add(const Matrix* a, const Matrix* b) {
+    if (!a || !b) return NULL;
+    if (a->rows != b->rows || a->cols != b->cols || a->ti != b->ti) return NULL;
+    Matrix* result = matrix_create(a->rows, a->cols, a->ti);
+    for (int i = 0; i < a->rows; i++) {
+        for (int j = 0; j < a->cols; j++) {
+            void* sum = a->ti->add(a->data[i][j], b->data[i][j]);
+            result->data[i][j] = sum;
         }
     }
-    return matrix;
+    return result;
 }
 
-int printMatrix(FILE* prog_finish, Matrix* matrix, operations* ops, char* comment) {
-    if (matrix == NULL) {
-        return 1;
-    }
-    fprintf(prog_finish, "%s\n", comment);
-    for (int i = 0; i < matrix->string; i++) {
-        for (int j = 0; j < matrix->elem; j++) {
-            if (matrix->data[i][j] == NULL || matrix->data[i][j]->data == NULL) {
-                return 1;
+Matrix* matrix_multiply(const Matrix* a, const Matrix* b) {
+    if (!a || !b) return NULL;
+    if (a->cols != b->rows || a->ti != b->ti) return NULL;
+    Matrix* result = matrix_create(a->rows, b->cols, a->ti);
+    for (int i = 0; i < a->rows; i++) {
+        for (int j = 0; j < b->cols; j++) {
+            void* sum = a->ti->zero();
+            for (int k = 0; k < a->cols; k++) {
+                void* prod = a->ti->multiply(a->data[i][k], b->data[k][j]);
+                void* new_sum = a->ti->add(sum, prod);
+                a->ti->free_element(sum);
+                a->ti->free_element(prod);
+                sum = new_sum;
             }
-            ops->print(prog_finish, matrix->data[i][j]->data);
+            result->data[i][j] = sum;
         }
-        fprintf(prog_finish, "\n");
     }
-    return 0;
+    return result;
 }
 
-int sumMatrix(Matrix* matrix1, Matrix* matrix2, Matrix* result, operations* ops) {
-    if (matrix1 == NULL || matrix2 == NULL || result == NULL) {
-        return 1;
-    }
-    if (matrix1->string != matrix2->string || matrix1->elem != matrix2->elem) {
-        return 1;
-    }
-    if (strcmp(matrix1->type, matrix2->type) != 0) {
-        return 1;
-    }
-    for (int i = 0; i < matrix1->string; i++) {
-        for (int j = 0; j < matrix1->elem; j++) {
-            if (matrix1->data[i][j] == NULL || matrix2->data[i][j] == NULL || result->data[i][j] == NULL) {
-                return 1;
-            }
-            result->data[i][j] = ops->sum(matrix1->data[i][j], matrix2->data[i][j]);
-            if (result->data[i][j] == NULL) {
-                return 1;
-            }
+Matrix* matrix_transpose(const Matrix* m) {
+    Matrix* result = matrix_create(m->cols, m->rows, m->ti);
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            result->data[j][i] = m->ti->copy(m->data[i][j]);
         }
     }
-    return 0;
+    return result;
 }
 
-int multiplyMatrix(Matrix* matrix1, Matrix* matrix2, Matrix* result, operations* ops) {
-    if (matrix1 == NULL || matrix2 == NULL || result == NULL) {
-        return 1;
+void matrix_row_operation(Matrix* m, int target_row, int src_row, const void* scalar) {
+    for (int j = 0; j < m->cols; j++) {
+        void* scaled = m->ti->scalar_multiply(scalar, m->data[src_row][j]);
+        void* new_val = m->ti->add(m->data[target_row][j], scaled);
+        m->ti->free_element(m->data[target_row][j]);
+        m->ti->free_element(scaled);
+        m->data[target_row][j] = new_val;
     }
-    if (matrix1->elem != matrix2->string) {
-        return 1;
-    }
-    if (strcmp(matrix1->type, matrix2->type) != 0) {
-        return 1;
-    }
-    for (int i = 0; i < result->string; i++) {
-        for (int j = 0; j < result->elem; j++) {
-            ops->zero(result->data[i][j]);
-        }
-    }
-    for (int i = 0; i < matrix1->string; i++) {
-        for (int j = 0; j < matrix2->elem; j++) {
-            for (int k = 0; k < matrix1->elem; k++) {
-                data_type* product = ops->multiply(matrix1->data[i][k], matrix2->data[k][j]);
-                if (product == NULL) {
-                    return 1;
-                }
-                data_type* sum = ops->sum(result->data[i][j], product);
-                if (sum == NULL) {
-                    free(product->data);
-                    free(product);
-                    return 1;
-                }
-                ops->copy(result->data[i][j], sum);
-                free(product->data);
-                free(product);
-                free(sum->data);
-                free(sum);
-            }
-        }
-    }
-    return 0;
 }
 
-int skalarMatrix(data_type* scalar, Matrix* matrix, Matrix* result, operations* ops) {
-    if (matrix == NULL || result == NULL || scalar == NULL) {
-        return 1;
-    }
-    if (matrix->data == NULL || result->data == NULL) {
-        return 1;
-    }
-    for (int i = 0; i < matrix->string; i++) {
-        for (int j = 0; j < matrix->elem; j++) {
-            if (matrix->data[i][j] == NULL || result->data[i][j] == NULL) {
-                return 1;
-            }
-            data_type* product = ops->multiply(matrix->data[i][j], scalar);
-            if (product == NULL) {
-                return 1;
-            }
-            ops->copy(result->data[i][j], product);
-            free(product->data);
-            free(product);
+Matrix* matrix_scalar_multiply(const Matrix* m, const void* scalar) {
+    Matrix* result = matrix_create(m->rows, m->cols, m->ti);
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            void* product = m->ti->scalar_multiply(scalar, m->data[i][j]);
+            result->data[i][j] = product;
         }
     }
-    return 0;
+    return result;
 }
 
-int linkombMatrix(Matrix* matrix, Matrix* result, data_type* coef, int index, operations* ops) {
-    if (matrix == NULL || result == NULL || coef == NULL) {
-        return 1;
-    }
-    if (index < 0 || index >= matrix->string) {
-        return 1;
-    }
-    for (int i = 0; i < matrix->string; i++) {
-        for (int j = 0; j < matrix->elem; j++) {
-            if (matrix->data[i][j] == NULL || result->data[i][j] == NULL) {
-                return 1;
-            }
-            ops->copy(result->data[i][j], matrix->data[i][j]);
+void matrix_print(FILE* file, const Matrix* m) {
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            m->ti->print(file, m->data[i][j]);
+            printf("\t");
         }
+        printf("\n");
     }
-    for (int j = 0; j < matrix->elem; j++) {
-        ops->zero(result->data[index][j]);
-        if (result->data[index][j] == NULL) {
-            return 1;
-        }
-    }
-    for (int i = 0; i < matrix->string; i++) {
-        for (int j = 0; j < matrix->elem; j++) {
-            data_type* product = ops->multiply(matrix->data[i][j], &coef[i]);
-            if (product == NULL) {
-                return 1;
-            }
-            data_type* sum_result = ops->sum(result->data[index][j], product);
-            if (sum_result == NULL) {
-                free(product->data);
-                free(product);
-                return 1;
-            }
-            ops->copy(result->data[index][j], sum_result);
-            free(product->data);
-            free(product);
-            free(sum_result->data);
-            free(sum_result);
-        }
-    }
-    return 0;
 }
 
-int transpose(Matrix* matrix, Matrix* result, operations* ops) {
-    if (matrix == NULL || result == NULL) {
-        return 1;
-    }
-    for (int i = 0; i < matrix->string; i++) {
-        for (int j = 0; j < matrix->elem; j++) {
-            ops->copy(result->data[j][i], matrix->data[i][j]);
-        }
-    }
-    return 0;
+void matrix_set_element(Matrix* m, int row, int col, void* value) {
+    assert(row >= 0 && row < m->rows);
+    assert(col >= 0 && col < m->cols);
+    m->ti->free_element(m->data[row][col]);
+    m->data[row][col] = value;
+}
+
+void* matrix_get_element(const Matrix* m, int row, int col) {
+    assert(row >= 0 && row < m->rows);
+    assert(col >= 0 && col < m->cols);
+    return m->data[row][col];
 }
