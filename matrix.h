@@ -1,14 +1,26 @@
-#pragma once
+#ifndef MATRIX_H
+#define MATRIX_H
 
 #include "type_info.h"
 
-// Объявления функций
-int freeMatrix(Matrix* matrix);
-Matrix* makeMatrix(int string, int elem, const char* type, operations* ops);
-Matrix* readMatrix(FILE* prog_fail, operations* ops);
-int printMatrix(FILE* prog_finish, Matrix* matrix, operations* ops, char* comment);
-int sumMatrix(Matrix* matrix1, Matrix* matrix2, Matrix* result, operations* ops);
-int multiplyMatrix(Matrix* matrix1, Matrix* matrix2, Matrix* result, operations* ops);
-int skalarMatrix(data_type* scalar, Matrix* matrix, Matrix* result, operations* ops);
-int linkombMatrix(Matrix* matrix, Matrix* result, data_type* coef, int index, operations* ops);
-int transpose(Matrix* matrix, Matrix* result, operations* ops);
+typedef struct Matrix {
+    int rows;
+    int cols;
+    void*** data;
+    const type_info* ti;
+} Matrix;
+
+Matrix* matrix_create(int rows, int cols, const type_info* ti);
+void matrix_free(Matrix* m);
+void matrix_set_element(Matrix* m, int row, int col, void* value);
+void* matrix_get_element(const Matrix* m, int row, int col);
+void matrix_print(FILE* file, const Matrix* m);
+Matrix* matrix_add(const Matrix* a, const Matrix* b);
+Matrix* matrix_multiply(const Matrix* a, const Matrix* b);
+Matrix* matrix_transpose(const Matrix* m);
+//void matrix_row_operation(Matrix* m, int target_row, int src_row, const void* scalar);
+Matrix* matrix_scalar_multiply(const Matrix* m, const void* scalar);
+Matrix* matrix_row_operation(const Matrix* m, int target_row, int src_row, const void* scalar);
+Matrix* matrix_copy(const Matrix* src);
+
+#endif

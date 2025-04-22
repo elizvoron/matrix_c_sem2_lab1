@@ -1,0 +1,172 @@
+Operation|Type|InputA|InputB|Expected|Actual|Result|Error
+add|int
+InputA:
+[1 2] 
+[
+InputB:
+[5 6] 
+[
+Expected:
+[6 8] 
+[
+Actual:
+[6 8] 
+[
+
+Result: PASS|OK
+
+add|float
+InputA:
+[1.10 2.
+InputB:
+[0.90 1.
+Expected:
+[2.00 4.
+Actual:
+[2.00 4.
+
+Result: PASS|OK
+
+add|complex
+InputA:
+[1.00+2.
+InputB:
+[3.00+4.
+Expected:
+[4.00+6.
+Actual:
+[4.00+6.
+
+Result: PASS|OK
+
+mult|int
+InputA:
+[1 2] 
+[
+InputB:
+[5 6] 
+[
+Expected:
+[19 22] 
+Actual:
+[19 22] 
+
+Result: PASS|OK
+
+mult|float
+InputA:
+[1.00 2.
+InputB:
+[5.00 6.
+Expected:
+[19.00 2
+Actual:
+[19.00 2
+
+Result: PASS|OK
+
+mult|complex
+InputA:
+[1.00+2.
+InputB:
+[3.00+4.
+Expected:
+[-5.00+1
+Actual:
+[-5.00+1
+
+Result: PASS|OK
+
+scal|int
+InputA:
+[1 2] 
+[
+InputB:5
+Expected:
+[5 10] 
+
+Actual:
+[5 10] 
+
+
+Result: PASS|OK
+
+scal|float
+InputA:
+[1.50 2.
+InputB:2.0
+Expected:
+[3.00 5.
+Actual:
+[3.00 5.
+
+Result: PASS|OK
+
+scal|complex
+InputA:
+[1.00+2.
+InputB:2+3i
+Expected:N/A
+Actual:N/A
+
+Result: FAIL|Parse expected failed
+
+trans|int
+InputA:
+[1 2 3] 
+InputB:N/A
+Expected:
+[1 4] 
+[
+Actual:
+[1 4] 
+[
+
+Result: PASS|OK
+
+trans|float
+InputA:
+[1.10 2.
+InputB:N/A
+Expected:
+[1.10 3.
+Actual:
+[1.10 3.
+
+Result: PASS|OK
+
+trans|complex
+InputA:
+[1.00+1.
+InputB:N/A
+Expected:
+[1.00+1.
+Actual:
+[1.00+1.
+
+Result: PASS|OK
+
+linkomb|int
+InputA:
+[1 2 3] 
+InputB:3 3 13 17 21 4 5 6 7 8 9
+
+Expected:
+[13 17 2
+Actual:
+[13 17 2
+
+Result: PASS|OK
+
+linkomb|float
+InputA:
+[1.00 2.
+InputB:2 2 7.0 10.0 3.0 4.0
+
+Expected:
+[7.00 10
+Actual:
+[7.00 10
+
+Result: PASS|OK
+
